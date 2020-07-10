@@ -9,4 +9,6 @@ const MONGODB_URL =
 
 const SECRET = process.env.SECRET;
 
-module.exports = { PORT, MONGODB_URL, SECRET };
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+
+module.exports = { PORT, MONGODB_URL, SECRET, SENDGRID_API_KEY };

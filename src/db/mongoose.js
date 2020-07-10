@@ -5,4 +5,5 @@ mongoose.connect(config.MONGODB_URL, {
   useUnifiedTopology: true,
   useNewUrlParser: true,
   useCreateIndex: true,
+  useFindAndModify: false,
 });

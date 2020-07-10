@@ -4,62 +4,82 @@ const auth = require("../middleware/auth");
 
 router.get("/cart", auth, async (req, res) => {
   try {
-    const cart = await Cart.findOne({ owner: req.user.id });
+    const cart = await Cart.findOne({ owner: req.user.id }).populate({
+      path: "products.data",
+      select: ["name", "img", "description", "price"],
+    });
+
     res.json(cart ? cart : { products: [] });
   } catch (error) {
+    console.log(error.message);
+
     res.status(400).send({ error: error.message });
   }
 });
 
 router.post("/cart", auth, async (req, res) => {
-  const { quantity, name, price } = req.body; //{name,price,quantity}
+  let { quantity, id } = req.body;
+  quantity = quantity === 0 ? 1 : quantity;
+
   try {
-    // let cart = await Cart.findOne({ owner });
-    let cart = await Cart.findOne({ owner: req.user.id });
+    let cart =
+      (await Cart.findOneAndUpdate(
+        { owner: req.user.id, "products.data": id },
+        { $inc: { "products.$.quantity": quantity } },
+        { new: true }
+      )) ||
+      (await Cart.findOneAndUpdate(
+        { owner: req.user.id },
+        {
+          $push: { products: { data: id, quantity } },
+        },
+        { new: true }
+      ));
 
-    if (cart) {
-      let itemIndex = cart.products.findIndex((p) => p.name === name);
-
-      if (itemIndex > -1) {
-        // let productItem = cart.products[itemIndex];
-        // productItem.quantity = quantity;
-        // cart.products[itemIndex] = productItem;
-        cart.products[itemIndex].quantity += quantity;
-      } else {
-        cart.products.push({ quantity, name, price });
-      }
-      cart = await cart.save();
-      return res.status(201).json(cart);
-    } else {
-      const newCart = await Cart.create({
+    if (!cart) {
+      cart = new Cart({
+        products: [{ data: id, quantity }],
         owner: req.user.id,
-        products: [{ quantity, name, price }],
       });
 
-      return res.status(201).send(newCart);
+      await cart.save();
     }
+
+    await Cart.populate(cart, {
+      path: "products.data",
+      select: ["name", "img", "description", "price"],
+    });
+    return res.status(201).json(cart);
   } catch (error) {
-    console.log(error.message);
+    console.log(error);
 
     res.status(400).send("Something went wrong");
   }
 });
 
-router.delete("/cart/:item", auth, async (req, res) => {
-  const item = req.params.item;
+router.delete("/cart/:id", auth, async (req, res) => {
+  const id = req.params.id;
   try {
-    let cart = await Cart.findOne({ owner: req.user.id });
-    if (cart) {
-      let itemIndex = cart.products.findIndex((p) => p.name === item);
-      if (itemIndex > -1) {
-        cart.products.splice(itemIndex, 1);
-        cart = await cart.save();
-        return res.status(203).json(cart);
-      }
+    let cart = await Cart.findOneAndUpdate(
+      { owner: req.user.id, "products.data": id },
+      {
+        $pull: { products: { data: id } },
+      },
+      { new: true }
+    );
+
+    if (!cart) {
+      throw new Error("Item not found");
     }
-    res.status(404).send("not found");
+
+    await Cart.populate(cart, {
+      path: "products.data",
+      select: ["name", "img", "description", "price"],
+    });
+
+    res.status(203).json(cart);
   } catch (error) {
-    console.log(eror);
+    console.log(error);
     res.status(400).send("Something went wrong");
   }
 });
