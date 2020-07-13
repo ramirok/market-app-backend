@@ -30,8 +30,28 @@ const sendPasswordChangedEmail = (email, name) => {
   });
 };
 
+const sendPasswordResetEmail = (email, token) => {
+  sgMail.send({
+    from: "krupoviesaramiro@gmail.com",
+    to: email,
+    subject: "Password reset",
+    html: `<a href="http://localhost:3000/auth/reset/${token}">Reset Password</a>`,
+  });
+};
+
+const sendActivateAccount = (email, token) => {
+  sgMail.send({
+    from: "krupoviesaramiro@gmail.com",
+    to: email,
+    subject: "Activate account",
+    html: `<a href="http://localhost:3000/auth/activate/${token}">Activate account</a>`,
+  });
+};
+
 module.exports = {
   sendWelcomeEmail,
   sendCancelationEmail,
   sendPasswordChangedEmail,
+  sendPasswordResetEmail,
+  sendActivateAccount,
 };

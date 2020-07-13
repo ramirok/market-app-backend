@@ -33,6 +33,7 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
     tokens: [{ token: { type: String, require: true } }],
+    resetLink: { data: String, default: "" },
   },
   { timestamps: true }
 );
@@ -50,7 +51,7 @@ userSchema.set("toJSON", {
 });
 
 userSchema.methods.generateAuthToken = async function () {
-  const token = await jwt.sign({ _id: this._id.toString() }, config.SECRET);
+  const token = jwt.sign({ _id: this._id.toString() }, config.SECRET);
   this.tokens = this.tokens.concat({ token });
   await this.save();
   return token;
