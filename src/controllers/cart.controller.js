@@ -1,33 +1,33 @@
-const router = require("express").Router();
 const Cart = require("../models/cart");
-const auth = require("../middleware/auth");
 
-router.get("/cart", auth, async (req, res) => {
+const getAllCartItems = async (req, res) => {
   try {
+    // finds cart by owner id and returns it poulated with products data
     const cart = await Cart.findOne({ owner: req.user.id }).populate({
       path: "products.data",
       select: ["name", "img", "description", "price"],
     });
 
+    // if no cart is found, returns empty array
     res.json(cart ? cart : { products: [] });
   } catch (error) {
-    console.log(error.message);
-
-    res.status(400).send({ error: error.message });
+    console.log(error);
+    res.status(500).json({ message: "Failed, please try again." });
   }
-});
+};
 
-router.post("/cart", auth, async (req, res) => {
+const addCartItem = async (req, res) => {
   let { quantity, id } = req.body;
-  quantity = quantity === 0 ? 1 : quantity;
 
   try {
     let cart =
+      // if the product is in cart, imcrement by quantity
       (await Cart.findOneAndUpdate(
         { owner: req.user.id, "products.data": id },
         { $inc: { "products.$.quantity": quantity } },
         { new: true }
       )) ||
+      // if the product is not in cart, push
       (await Cart.findOneAndUpdate(
         { owner: req.user.id },
         {
@@ -36,6 +36,7 @@ router.post("/cart", auth, async (req, res) => {
         { new: true }
       ));
 
+    // if no cart is found, creates it with the new product
     if (!cart) {
       cart = new Cart({
         products: [{ data: id, quantity }],
@@ -45,21 +46,23 @@ router.post("/cart", auth, async (req, res) => {
       await cart.save();
     }
 
+    // populates cart with product data and returns it
     await Cart.populate(cart, {
       path: "products.data",
       select: ["name", "img", "description", "price"],
     });
-    return res.status(201).json(cart);
+
+    return res.json(cart);
   } catch (error) {
     console.log(error);
-
-    res.status(400).send("Something went wrong");
+    res.status(500).json({ message: "Failed, please try again." });
   }
-});
+};
 
-router.delete("/cart/:id", auth, async (req, res) => {
+const deleteCartItem = async (req, res) => {
   const id = req.params.id;
   try {
+    // if cart is found, removes the product by id
     let cart = await Cart.findOneAndUpdate(
       { owner: req.user.id, "products.data": id },
       {
@@ -68,20 +71,22 @@ router.delete("/cart/:id", auth, async (req, res) => {
       { new: true }
     );
 
+    // if no cart is found, throws error
     if (!cart) {
       throw new Error("Item not found");
     }
 
+    // populates with product data and returns it
     await Cart.populate(cart, {
       path: "products.data",
       select: ["name", "img", "description", "price"],
     });
 
-    res.status(203).json(cart);
+    res.json(cart);
   } catch (error) {
     console.log(error);
-    res.status(400).send("Something went wrong");
+    res.status(500).json({ message: "Failed, please try again." });
   }
-});
+};
 
-module.exports = router;
+module.exports = { getAllCartItems, addCartItem, deleteCartItem };

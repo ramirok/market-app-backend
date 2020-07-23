@@ -1,7 +1,6 @@
-const router = require("express").Router();
 const Product = require("../models/product");
 
-router.post("/admin", async (req, res) => {
+const admin = async (req, res) => {
   const product = new Product({
     category: req.body.category,
     name: req.body.name,
@@ -16,6 +15,6 @@ router.post("/admin", async (req, res) => {
   } catch (error) {
     res.status(400).send({ error: error.message });
   }
-});
+};
 
-module.exports = router;
+module.exports = { admin };

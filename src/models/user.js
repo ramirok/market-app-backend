@@ -40,16 +40,18 @@ const userSchema = new mongoose.Schema(
 
 userSchema.set("toJSON", {
   transform: (document, returnedObject) => {
-    returnedObject.id = returnedObject._id;
+    delete returnedObject._id;
     delete returnedObject.password;
     delete returnedObject.tokens;
     delete returnedObject._id;
     delete returnedObject.__v;
     delete returnedObject.createdAt;
     delete returnedObject.updatedAt;
+    delete returnedObject.resetLink;
   },
 });
 
+// custom method for generate and add token to tokens array
 userSchema.methods.generateAuthToken = async function () {
   const token = jwt.sign({ _id: this._id.toString() }, config.SECRET);
   this.tokens = this.tokens.concat({ token });
@@ -57,21 +59,31 @@ userSchema.methods.generateAuthToken = async function () {
   return token;
 };
 
-userSchema.statics.findByCredentials = async (email, password) => {
-  const user = await User.findOne({ email });
+// custom static method for finding by credentials
+userSchema.statics.findByCredentials = async (email, password, res) => {
+  // finds by email
+  try {
+    const user = await User.findOne({ email });
 
-  if (!user) {
-    throw new Error("Wrong email or password.");
+    // if no user found, throws error
+    if (!user) {
+      throw new Error();
+    }
+    // compare provided password in request with password in db
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    // if passwords doesn't match, throws error
+    if (!isMatch) {
+      throw new Error();
+    }
+
+    return user;
+  } catch (error) {
+    return null;
   }
-  const isMatch = await bcrypt.compare(password, user.password);
-
-  if (!isMatch) {
-    throw new Error("Wrong email or password.");
-  }
-
-  return user;
 };
 
+// hash password before save
 userSchema.pre("save", async function (next) {
   if (this.isModified("password")) {
     this.password = await bcrypt.hash(this.password, saltRounds);
