@@ -1,7 +1,9 @@
-const bcrypt = require("bcryptjs");
 const User = require("../models/user");
+const userDetails = require("../models/userDetails");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const config = require("../utils/config");
+const google = require("../utils/google");
 const {
   sendActivateAccount,
   sendWelcomeEmail,
@@ -9,6 +11,7 @@ const {
   sendPasswordResetEmail,
 } = require("../emails/account");
 const expressValidator = require("express-validator");
+const UserDetails = require("../models/userDetails");
 
 const createUser = async (req, res) => {
   const errors = expressValidator
@@ -25,9 +28,8 @@ const createUser = async (req, res) => {
   try {
     // checks if email already exist
     const exist = await User.findOne({ email });
-    if (exist) {
+    if (exist)
       return res.status(400).json({ message: "Email already in use." });
-    }
 
     // signs token with credentials
     const token = jwt.sign(
@@ -59,10 +61,14 @@ const activateUser = async (req, res) => {
         const { name, email, password } = decoded;
         const user = new User({ name, email, password });
         await user.save();
+
+        // sends email with welcome message
+        sendWelcomeEmail(email, name);
       } catch (error) {
         // if toke verify fails, sends error message
         return res.status(400).json({ message: "Link has expired" });
       }
+
       res.json({ message: "Signed up seccesfully" });
     } else {
       // if no token is sent in the request, send error message
@@ -107,6 +113,53 @@ const loginUser = async (req, res) => {
   }
 };
 
+const loginUserGoogle = async (req, res) => {
+  if (req.query.code) {
+    try {
+      // gets acces token from code query in redirect url
+      const tokens = await google.getAccessTokenFromCode(req.query.code);
+
+      // gets user details from token
+      const userDetails = await google.getUserDetails(tokens.access_token);
+
+      // checks if user email already exist
+      const exist = await User.findOne({ email: userDetails.email });
+
+      if (!exist) {
+        // if it doesn't exist, creates and saves new user
+        const user = new User({
+          name: userDetails.name,
+          email: userDetails.email,
+          password: userDetails.email + config.SECRET,
+        });
+        await user.save();
+
+        // sends email with welcome message
+        sendWelcomeEmail(userDetails.email, userDetails.name);
+
+        // returns user info and token
+        const token = await user.generateAuthToken();
+        return res.json({ user, token });
+      }
+      // if user already exists, returns user info and token
+      const token = await exist.generateAuthToken();
+      return res.json({ user: exist, token });
+    } catch (error) {
+      // console.log(error);
+      res.status(500).json({ message: "Failed, please try again." });
+    }
+  } else {
+    try {
+      // generates and send url for login with google
+      const googleLoginUrl = `https://accounts.google.com/o/oauth2/v2/auth?${google.stringifiedParams}`;
+      res.json({ url: googleLoginUrl });
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ message: "Failed, please try again." });
+    }
+  }
+};
+
 const forgotPass = async (req, res) => {
   const errors = expressValidator
     .validationResult(req)
@@ -147,7 +200,7 @@ const forgotPass = async (req, res) => {
   }
 };
 
-const ResetPass = async (req, res) => {
+const resetPass = async (req, res) => {
   const errors = expressValidator
     .validationResult(req)
     .formatWith(({ msg }) => {
@@ -231,21 +284,71 @@ const changePass = async (req, res) => {
   try {
     // compares currentPassword with password stored in db
     const isMatch = await bcrypt.compare(currentPass, req.user.password);
-
     if (!isMatch) {
       // if doesn't match, sends error message
       return res.status(400).json({ message: "Wrong password." });
     }
-
     // updates user with new pasword
     req.user.password = passwordConfirmation;
-
     await req.user.save();
-
     // sends password has changed email
     sendPasswordChangedEmail(req.user.email, req.user.name);
-
     res.json({ message: "Password changed successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Failed, please try again." });
+  }
+};
+
+const getUserInfo = async (req, res) => {
+  try {
+    // finds user details by id
+    let details = await UserDetails.findOne({ owner: req.user._id });
+
+    //if user details have been never created, sends an empty object
+    if (!details) {
+      return res.json({});
+    }
+
+    // if is found, send details
+    res.json(details);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Failed, please try again." });
+  }
+};
+
+const putUserInfo = async (req, res) => {
+  const errors = expressValidator
+    .validationResult(req)
+    .formatWith(({ msg }) => {
+      return msg;
+    });
+
+  // if validator middleware has error, returns error message
+  if (!errors.isEmpty())
+    return res.status(422).json({ message: errors.array()[0] });
+
+  try {
+    const reqData = req.body;
+
+    // finds user details by id
+    let details = await UserDetails.findOne({ owner: req.user._id });
+
+    //if user details have been never created, creates new
+
+    if (!details) {
+      details = new UserDetails({ owner: req.user._id });
+    }
+
+    // add new inputs and save
+    for (const key in reqData) {
+      reqData[key] ? (details[key] = reqData[key]) : null;
+    }
+    await details.save();
+
+    // always returns empty object
+    res.json({});
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Failed, please try again." });
@@ -256,9 +359,12 @@ module.exports = {
   createUser,
   activateUser,
   loginUser,
+  loginUserGoogle,
   forgotPass,
-  ResetPass,
+  resetPass,
   logoutUser,
   logoutUserFromAll,
   changePass,
+  getUserInfo,
+  putUserInfo,
 };

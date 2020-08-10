@@ -34,6 +34,8 @@ const userSchema = new mongoose.Schema(
     },
     tokens: [{ token: { type: String, require: true } }],
     resetLink: { data: String, default: "" },
+    personalInfo: {},
+    addressInfo: {},
   },
   { timestamps: true }
 );

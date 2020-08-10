@@ -21,18 +21,17 @@ const checkPassword = () => {
   // check if password has a least 6 characters, 1 letter and 1 digit
   return body(
     "password",
-    "Password must have 6 characters and 1 digit at least"
+    "Password must have 6 characters, 1 digit and 1 letter."
   )
     .isLength({ min: 6 })
-    .matches(/\d/)
-    .matches(/[a-z]/gi);
+    .matches(/^(?=.*[a-zA-Z])(?=.*[0-9])/);
 };
 
 const checkPasswordConfirmation = () => {
   // check if confirmation password matches password
   return body("passwordConfirmation").custom((value, { req }) => {
     if (value !== req.body.password) {
-      throw new Error("Password confirmation does not match new password");
+      throw new Error("Password confirmation does not match new password.");
     }
     return true;
   });
@@ -117,6 +116,35 @@ const checkCategory = () => {
   return param("category").isAlpha();
 };
 
+checkPersonalInfo = () => {
+  return [
+    body("fullName")
+      .if(body("fullName").exists({ checkFalsy: true, checkNull: true }))
+      .escape(),
+    body("phoneNumber")
+      .if(body("phoneNumber").exists({ checkFalsy: true }))
+      .escape()
+      .isNumeric(),
+    body("state")
+      .if(body("state").exists({ checkFalsy: true }))
+      .escape(),
+    body("city")
+      .if(body("city").exists({ checkFalsy: true }))
+      .escape(),
+    body("zipCode")
+      .if(body("zipCode").exists({ checkFalsy: true }))
+      .escape()
+      .isNumeric(),
+    body("street")
+      .if(body("street").exists({ checkFalsy: true }))
+      .escape(),
+    body("streetNumber")
+      .if(body("streetNumber").exists({ checkFalsy: true }))
+      .escape()
+      .isNumeric(),
+  ];
+};
+
 const validate = (method) => {
   switch (method) {
     case "createUser":
@@ -139,6 +167,8 @@ const validate = (method) => {
       return [checkSearchQuery()];
     case "categorySearch":
       return [checkCategory()];
+    case "userData":
+      return [checkPersonalInfo()];
     default:
       break;
   }
