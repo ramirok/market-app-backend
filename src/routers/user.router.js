@@ -13,6 +13,9 @@ const {
   changePass,
   getUserInfo,
   putUserInfo,
+  purchaseAproved,
+  resetCart,
+  orders,
 } = require("../controllers/user.controller");
 
 const validate = require("../middleware/validation");
@@ -49,5 +52,14 @@ router.get("/user-details", auth, getUserInfo);
 
 // update user details (personal data and address)
 router.put("/user-details", validate("userData"), auth, putUserInfo);
+
+// new payments
+router.post("/purchase-aproved", auth, purchaseAproved);
+
+// reset user's cart
+router.post("/reset-cart", auth, resetCart);
+
+// query user's orders
+router.get("/orders", auth, orders);
 
 module.exports = router;

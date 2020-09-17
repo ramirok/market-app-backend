@@ -21,6 +21,9 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 
 const GOOGLE_SECRET = process.env.GOOGLE_SECRET;
 
+const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
+const PAYPAL_SECRET = process.env.PAYPAL_SECRET;
+
 module.exports = {
   PORT,
   MONGODB_URL,
@@ -30,4 +33,6 @@ module.exports = {
   VERIFY_ACC_SECRET,
   GOOGLE_CLIENT_ID,
   GOOGLE_SECRET,
+  PAYPAL_CLIENT_ID,
+  PAYPAL_SECRET,
 };
