@@ -3,6 +3,7 @@ const UserDetails = require("../models/userDetails");
 const Cart = require("../models/cart");
 const Product = require("../models/product");
 const Payment = require("../models/payment");
+const UserHistory = require("../models/userHistory");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const config = require("../utils/config");
@@ -361,7 +362,7 @@ const putUserInfo = async (req, res) => {
   }
 };
 
-const purchaseAproved = async (req, res) => {
+const createPurchaseOrder = async (req, res) => {
   try {
     const accessToken = await paypal.getAccessToken();
 
@@ -381,7 +382,10 @@ const purchaseAproved = async (req, res) => {
 
     let total = 0;
     const items = cart.products.map((item) => {
+      // purchase total
       total += item.data.price * item.quantity;
+
+      // return item data for creating order
       return {
         name: item.data.name,
         unit_amount: { value: item.data.price, currency_code: "USD" },
@@ -390,6 +394,7 @@ const purchaseAproved = async (req, res) => {
       };
     });
 
+    // creates order
     const order = await fetch(
       "https://api.sandbox.paypal.com/v2/checkout/orders/",
       {
@@ -405,19 +410,20 @@ const purchaseAproved = async (req, res) => {
             {
               description: "MarketApp purchase",
               amount: {
-                value: total.toFixed(2),
+                value: total.toFixed(2), //purchase total
                 currency_code: "USD",
                 breakdown: {
                   item_total: { value: total.toFixed(2), currency_code: "USD" },
                 },
               },
-              items,
+              items, //cart items
             },
           ],
         }),
       }
     );
 
+    // if order creation fails, return 400
     if (order.statusText !== "Created") {
       console.log(order);
       return res.status(400).end();
@@ -425,6 +431,7 @@ const purchaseAproved = async (req, res) => {
 
     const parsedOrder = await order.json();
 
+    // return order id
     res.json({ orderID: parsedOrder.id });
   } catch (error) {
     console.log(error);
@@ -435,73 +442,141 @@ const purchaseAproved = async (req, res) => {
 const resetCart = async (req, res) => {
   const { orderId } = req.body;
 
-  const accessToken = await paypal.getAccessToken();
+  try {
+    const accessToken = await paypal.getAccessToken();
 
-  // fetches order details
-  const details = await fetch(
-    `https://api.sandbox.paypal.com/v2/checkout/orders/${orderId}/capture`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: `application/json`,
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
-  );
-
-  // if fetch fetch fails, send 400 status
-  if (details.statusText !== "Created") {
-    return res.status(400).end();
-  }
-
-  const parsedDetails = await details.json();
-
-  // finds user's cart
-  const cart = await Cart.findOne({ owner: req.user._id }).populate(
-    "products.data"
-  );
-
-  // saves purchase history for each product in the cart
-  let history = [];
-  cart.products.forEach((item) => {
-    history.push({
-      data: item.data._id,
-      quantity: item.quantity,
-    });
-  });
-
-  // saves new payment in the db
-  let transactionData = {};
-  transactionData.owner = req.user._id;
-  transactionData.products = history;
-  transactionData.data = parsedDetails;
-
-  const payment = new Payment(transactionData);
-  await payment.save();
-
-  // increase sold number in products database
-  await asyncForEach(cart.products, async (item) => {
-    await Product.findOneAndUpdate(
-      { _id: mongoose.Types.ObjectId(item.data._id) },
-      { $inc: { sold: item.quantity } }
+    // fetches order details
+    const details = await fetch(
+      `https://api.sandbox.paypal.com/v2/checkout/orders/${orderId}/capture`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: `application/json`,
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
     );
-  });
 
-  // empty user's cart
-  cart.products = [];
-  await cart.save();
+    // if fetch fetch fails, send 400 status
+    if (details.statusText !== "Created") {
+      return res.status(400).end();
+    }
 
-  // return empty cart
-  res.status(200).json([]);
+    const parsedDetails = await details.json();
+
+    // finds user's cart
+    const cart = await Cart.findOne({ owner: req.user._id }).populate(
+      "products.data"
+    );
+
+    // saves purchase history for each product in the cart
+    let history = [];
+    cart.products.forEach((item) => {
+      history.push({
+        data: item.data._id,
+        quantity: item.quantity,
+      });
+    });
+
+    // saves new payment in the db
+    let transactionData = {};
+    transactionData.owner = req.user._id;
+    transactionData.products = history;
+    transactionData.data = parsedDetails;
+
+    const payment = new Payment(transactionData);
+    await payment.save();
+
+    // increase sold number in products database
+    await asyncForEach(cart.products, async (item) => {
+      await Product.findOneAndUpdate(
+        { _id: mongoose.Types.ObjectId(item.data._id) },
+        { $inc: { sold: item.quantity } }
+      );
+    });
+
+    // empty user's cart
+    cart.products = [];
+    await cart.save();
+
+    // return empty cart
+    res.status(200).json([]);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Failed, please try again." });
+  }
 };
 
 const orders = async (req, res) => {
-  const orders = await Payment.find({ owner: req.user._id }).populate(
-    "products.data"
-  );
+  try {
+    // finds user's orders
+    const orders = await Payment.find({ owner: req.user._id }).populate(
+      "products.data"
+    );
 
-  res.json(orders);
+    res.json(orders);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Failed, please try again." });
+  }
+};
+
+const postHistory = async (req, res) => {
+  const errors = expressValidator
+    .validationResult(req)
+    .formatWith(({ msg }) => {
+      return msg;
+    });
+
+  // if validator middleware has error, returns error message
+  if (!errors.isEmpty())
+    return res.status(422).json({ message: errors.array()[0] });
+
+  // const { newId } = req.body; //item to add to history
+  const { id } = req.params; //item to add to history
+
+  try {
+    // finds user's history
+    let history = await UserHistory.findOne({ owner: req.user._id });
+
+    // if not found, creates new hsitory and returns
+    if (!history) {
+      const history = new UserHistory({
+        products: [id],
+        owner: req.user._id,
+      });
+      await history.save();
+      return res.end();
+    }
+
+    // filter new item from history in case it already exist, and adds it to the top
+    const newArray = history.products
+      .filter((item) => item.toString() !== id)
+      .slice(0, 7);
+    newArray.unshift(id);
+    history.products = newArray;
+    await history.save();
+
+    res.end();
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Failed, please try again." });
+  }
+};
+
+const getHistory = async (req, res) => {
+  try {
+    // finds user's history
+    const history = await UserHistory.findOne({ owner: req.user._id }).populate(
+      "products"
+    );
+
+    res.json(history.products);
+  } catch (error) {
+    console.log(error);
+    res.status(500).end();
+  }
 };
 
 module.exports = {
@@ -516,7 +591,9 @@ module.exports = {
   changePass,
   getUserInfo,
   putUserInfo,
-  purchaseAproved,
+  createPurchaseOrder,
   resetCart,
   orders,
+  postHistory,
+  getHistory,
 };

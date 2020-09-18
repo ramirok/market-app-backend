@@ -13,9 +13,11 @@ const {
   changePass,
   getUserInfo,
   putUserInfo,
-  purchaseAproved,
+  createPurchaseOrder,
   resetCart,
   orders,
+  postHistory,
+  getHistory,
 } = require("../controllers/user.controller");
 
 const validate = require("../middleware/validation");
@@ -54,12 +56,18 @@ router.get("/user-details", auth, getUserInfo);
 router.put("/user-details", validate("userData"), auth, putUserInfo);
 
 // new payments
-router.post("/purchase-aproved", auth, purchaseAproved);
+router.post("/purchase-aproved", auth, createPurchaseOrder);
 
 // reset user's cart
 router.post("/reset-cart", auth, resetCart);
 
 // query user's orders
 router.get("/orders", auth, orders);
+
+// save seen before items
+router.post("/history/:id", validate("postHistory"), auth, postHistory);
+
+// get seen before items
+router.get("/history", auth, getHistory);
 
 module.exports = router;

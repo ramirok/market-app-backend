@@ -81,7 +81,6 @@ const deleteCartItem = async (req, res) => {
       path: "products.data",
       select: ["name", "img", "description", "price"],
     });
-
     res.json(cart);
   } catch (error) {
     console.log(error);

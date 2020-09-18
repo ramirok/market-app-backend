@@ -169,6 +169,8 @@ const validate = (method) => {
       return [checkCategory()];
     case "userData":
       return [checkPersonalInfo()];
+    case "postHistory":
+      return checkItemId;
     default:
       break;
   }

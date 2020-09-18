@@ -31,7 +31,7 @@ const getProductsSuggestions = async (req, res) => {
 
   // creates a regex with the q query
   const q = req.query.q;
-  const reg = new RegExp(q);
+  const reg = new RegExp(q, "i");
 
   try {
     // finds products by regex
@@ -69,8 +69,6 @@ const getProductsCategory = async (req, res) => {
 
 module.exports = {
   getProducts,
-  // getProductsCart,
   getProductsSuggestions,
-  // getProductsItem,
   getProductsCategory,
 };
