@@ -112,7 +112,7 @@ const loginUser = async (req, res) => {
     // if user found, generates token and returns user and token
     const token = await user.generateAuthToken();
 
-    res.json({ user, token });
+    res.json({ token });
   } catch (error) {
     console.log(error);
 
