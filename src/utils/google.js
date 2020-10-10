@@ -2,10 +2,12 @@ const queryString = require("querystring");
 const config = require("./config");
 const fetch = require("node-fetch");
 
+const baseUrl = "https://rk-market-app.herokuapp.com/";
+
 // generates url for google login
 const stringifiedParams = queryString.stringify({
   client_id: config.GOOGLE_CLIENT_ID,
-  redirect_uri: "http://localhost:3000/auth/google",
+  redirect_uri: `${baseUrl}auth/google`,
   scope: [
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/userinfo.profile",
@@ -23,7 +25,7 @@ const getAccessTokenFromCode = async (code) => {
     body: JSON.stringify({
       client_id: config.GOOGLE_CLIENT_ID,
       client_secret: config.GOOGLE_SECRET,
-      redirect_uri: "http://localhost:3000/auth/google",
+      redirect_uri: `${baseUrl}auth/google`,
       grant_type: "authorization_code",
       code,
     }),

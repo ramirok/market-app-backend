@@ -1,6 +1,8 @@
 const sgMail = require("@sendgrid/mail");
 const config = require("../utils/config");
 
+const baseUrl = "https://rk-market-app.herokuapp.com/";
+
 sgMail.setApiKey(config.SENDGRID_API_KEY);
 
 // sends account activation link to new users
@@ -9,7 +11,7 @@ const sendActivateAccount = (email, token) => {
     from: "krupoviesaramiro@gmail.com",
     to: email,
     subject: "Activate account",
-    html: `<a href="http://localhost:3000/auth/activate/${token}">Activate account</a>`,
+    html: `<a href="${baseUrl}auth/activate/${token}">Activate account</a>`,
   });
 };
 
@@ -39,7 +41,7 @@ const sendPasswordResetEmail = (email, token) => {
     from: "krupoviesaramiro@gmail.com",
     to: email,
     subject: "Password reset",
-    html: `<a href="http://localhost:3000/auth/reset/${token}">Reset Password</a>`,
+    html: `<a href="${baseUrl}auth/reset/${token}">Reset Password</a>`,
   });
 };
 
