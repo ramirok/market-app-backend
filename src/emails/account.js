@@ -8,7 +8,7 @@ sgMail.setApiKey(config.SENDGRID_API_KEY);
 // sends account activation link to new users
 const sendActivateAccount = (email, token) => {
   sgMail.send({
-    from: "krupoviesaramiro@gmail.com",
+    from: "rk.market.app@gmail.com",
     to: email,
     subject: "Activate account",
     html: `<a href="${baseUrl}auth/activate/${token}">Activate account</a>`,
@@ -19,7 +19,7 @@ const sendActivateAccount = (email, token) => {
 const sendWelcomeEmail = (email, name) => {
   sgMail.send({
     to: email,
-    from: "krupoviesaramiro@gmail.com",
+    from: "rk.market.app@gmail.com",
     subject: "Thanks for joining in!",
     text: `Welcome to the app, ${name}.`,
   });
@@ -29,7 +29,7 @@ const sendWelcomeEmail = (email, name) => {
 const sendPasswordChangedEmail = (email, name) => {
   sgMail.send({
     to: email,
-    from: "krupoviesaramiro@gmail.com",
+    from: "rk.market.app@gmail.com",
     subject: "Password has changed",
     text: `Hi, ${name}, yo just changed your password.`,
   });
@@ -38,7 +38,7 @@ const sendPasswordChangedEmail = (email, name) => {
 // sends resetpassword link when user forgot password
 const sendPasswordResetEmail = (email, token) => {
   sgMail.send({
-    from: "krupoviesaramiro@gmail.com",
+    from: "rk.market.app@gmail.com",
     to: email,
     subject: "Password reset",
     html: `<a href="${baseUrl}auth/reset/${token}">Reset Password</a>`,
