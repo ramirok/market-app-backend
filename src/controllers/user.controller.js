@@ -59,7 +59,6 @@ const createUser = async (req, res) => {
 
 const activateUser = async (req, res) => {
   const { token } = req.body;
-
   try {
     if (token) {
       try {
@@ -146,7 +145,7 @@ const loginUserGoogle = async (req, res) => {
 
         // returns user info and token
         const token = await user.generateAuthToken();
-        return res.json({ user, token });
+        return res.json({ token });
       }
       // if user already exists, returns user info and token
       const token = await exist.generateAuthToken();
@@ -257,7 +256,7 @@ const logoutUser = async (req, res) => {
     // removes the token sent in the request from the token list and saves the updated user
     req.user.tokens = req.user.tokens.filter((el) => el.token !== req.token);
     await req.user.save();
-    res.end();
+    res.json({});
   } catch (error) {
     res.status(500).json({ message: "Failed, please try again." });
   }
@@ -388,7 +387,10 @@ const createPurchaseOrder = async (req, res) => {
       // return item data for creating order
       return {
         name: item.data.name,
-        unit_amount: { value: item.data.price, currency_code: "USD" },
+        unit_amount: {
+          value: item.data.price.toFixed(2),
+          currency_code: "USD",
+        },
         quantity: item.quantity,
         sku: item.data._id,
       };
@@ -558,7 +560,7 @@ const postHistory = async (req, res) => {
     history.products = newArray;
     await history.save();
 
-    res.end();
+    res.json({});
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Failed, please try again." });
@@ -572,6 +574,9 @@ const getHistory = async (req, res) => {
       "products"
     );
 
+    if (!history) {
+      return res.json([]);
+    }
     res.json(history.products);
   } catch (error) {
     console.log(error);

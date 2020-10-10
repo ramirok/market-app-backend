@@ -17,7 +17,9 @@ const getAllCartItems = async (req, res) => {
 };
 
 const addCartItem = async (req, res) => {
-  let { quantity, id } = req.body;
+  // let { quantity, id } = req.body;
+  const quantity = req.body.quantity;
+  const id = req.params.id;
 
   try {
     let cart =

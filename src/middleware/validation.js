@@ -1,6 +1,7 @@
 const { body, query, param } = require("express-validator");
 const Cart = require("../models/cart");
 const Product = require("../models/product");
+const mongoose = require("mongoose");
 
 const checkEmail = () => {
   // check if email is a valid email address
@@ -37,17 +38,11 @@ const checkPasswordConfirmation = () => {
   });
 };
 
-const checkItemQuantityAndId = async (req, res, next) => {
-  let { id, quantity } = req.body;
+const checkItemQuantity = async (req, res, next) => {
+  let quantity = req.body.quantity;
+  const id = req.params.id;
 
   try {
-    // check if id is a valid product id, else throw error
-    const productExist = await Product.findById(id);
-
-    if (!productExist) {
-      throw new Error();
-    }
-
     // check if quantity is an integer, else throw error
     if (isNaN(parseInt(quantity))) {
       throw new Error();
@@ -83,9 +78,15 @@ const checkItemQuantityAndId = async (req, res, next) => {
 const checkItemId = async (req, res, next) => {
   const id = req.params.id;
 
-  // check if id is a valid product id, else throw error
-  const productExist = await Product.findById(id);
   try {
+    // check if id is a valid mongooseId, else throw error
+    const isValid = mongoose.Types.ObjectId.isValid(id);
+    if (!isValid) {
+      throw new Error();
+    }
+
+    // check if id is a valid product, else throw error
+    const productExist = await Product.findById(id);
     if (!productExist) {
       throw new Error();
     }
@@ -113,7 +114,7 @@ const checkSearchQuery = () => {
 
 const checkCategory = () => {
   // check category param has only letters
-  return param("category").isAlpha();
+  return param("category").matches(/[a-z\-]+/);
 };
 
 checkPersonalInfo = () => {
@@ -158,7 +159,7 @@ const validate = (method) => {
     case "changePass":
       return [checkPassword(), checkPasswordConfirmation()];
     case "addCartItem":
-      return checkItemQuantityAndId;
+      return [checkItemId, checkItemQuantity];
     case "delCartItem":
       return checkItemId;
     case "sortProducts":
