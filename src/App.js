@@ -14,7 +14,22 @@ app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
 
-app.use(express.static("build"));
+// app.use(express.static("build"));
+app.use(
+  express.static("build", {
+    etag: true,
+    lastModified: true,
+    setHeaders: (res, path) => {
+      const hashRegExp = new RegExp("\\.[0-9a-f]{8}\\.");
+
+      if (path.endsWith(".html")) {
+        res.setHeader("Cache-Control", "no-cache");
+      } else if (hashRegExp.test(path)) {
+        res.setHeader("Cache-Control", "max-age=31536000");
+      }
+    },
+  })
+);
 
 app.use("/products", productsRouters);
 app.use("/users", usersRouters);
