@@ -21,8 +21,7 @@ app.use(
     lastModified: true,
     setHeaders: (res, path) => {
       const hashRegExp = new RegExp("\\.[0-9a-f]{8}\\.");
-
-      if (path.endsWith(".html")) {
+      if (path.endsWith(".html") || path.endsWith(".webp")) {
         res.setHeader("Cache-Control", "no-cache");
       } else if (hashRegExp.test(path)) {
         res.setHeader("Cache-Control", "max-age=31536000");

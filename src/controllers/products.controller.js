@@ -2,6 +2,7 @@ const Product = require("../models/product");
 const expressValidator = require("express-validator");
 
 const getProducts = async (req, res) => {
+  res.header({ "Cache-Control": "no-cache" });
   try {
     // if req has sortBy query
     if (req.query.sortBy) {
