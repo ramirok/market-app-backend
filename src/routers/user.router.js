@@ -20,54 +20,83 @@ const {
   getHistory,
 } = require("../controllers/user.controller");
 
-const validate = require("../middleware/validation");
+const { validate, checkValidationErrors } = require("../middleware/validation");
 
-// create new user
-router.post("/", validate("createUser"), createUser);
+router
+  // create new user
+  .post("/", validate("createUser"), checkValidationErrors, createUser)
 
-// activate new user account
-router.post("/activate", activateUser);
+  // activate new user account
+  .post(
+    "/activate",
+    validate("checkToken"),
+    checkValidationErrors,
+    activateUser
+  )
 
-// login user
-router.post("/login", validate("loginUser"), loginUser);
+  // login user
+  .post("/login", validate("loginUser"), checkValidationErrors, loginUser)
 
-// login with google
-router.get("/login/google", loginUserGoogle);
+  // login with google
+  .get("/login/google", loginUserGoogle)
 
-// forgot password
-router.post("/forgot-pass", validate("forgotPass"), forgotPass);
+  // forgot password
+  .post(
+    "/forgot-pass",
+    validate("forgotPass"),
+    checkValidationErrors,
+    forgotPass
+  )
 
-// reset password
-router.put("/reset-pass", validate("resetPass"), resetPass);
+  // reset password
+  .put("/reset-pass", validate("resetPass"), checkValidationErrors, resetPass)
 
-// logout user
-router.post("/logout", auth, logoutUser);
+  // logout user
+  .post("/logout", auth, logoutUser)
 
-// logout from all other devices
-router.post("/logoutAll", auth, logoutUserFromAll);
+  // logout from all other devices
+  .post("/logoutAll", auth, logoutUserFromAll)
 
-// change password (when logged in)
-router.put("/change", validate("changePass"), auth, changePass);
+  // change password (when logged in)
+  .put(
+    "/change",
+    auth,
+    validate("changePass"),
+    checkValidationErrors,
+    changePass
+  )
 
-// get user details (personal data and address)
-router.get("/user-details", auth, getUserInfo);
+  // get user details (personal data and address)
+  .get("/user-details", auth, getUserInfo)
 
-// update user details (personal data and address)
-router.put("/user-details", validate("userData"), auth, putUserInfo);
+  // update user details (personal data and address)
+  .put(
+    "/user-details",
+    auth,
+    validate("userData"),
+    checkValidationErrors,
+    putUserInfo
+  )
 
-// new payments
-router.post("/purchase-aproved", auth, createPurchaseOrder);
+  // new payments
+  .post("/purchase-aproved", auth, createPurchaseOrder)
 
-// reset user's cart
-router.post("/reset-cart", auth, resetCart);
+  // reset user's cart
+  .post("/reset-cart", auth, resetCart)
 
-// query user's orders
-router.get("/orders", auth, orders);
+  // query user's orders
+  .get("/orders", auth, orders)
 
-// save seen before items
-router.post("/history/:id", validate("postHistory"), auth, postHistory);
+  // save seen before items
+  .post(
+    "/history/:id",
+    auth,
+    validate("postHistory"),
+    checkValidationErrors,
+    postHistory
+  )
 
-// get seen before items
-router.get("/history", auth, getHistory);
+  // get seen before items
+  .get("/history", auth, getHistory);
 
 module.exports = router;

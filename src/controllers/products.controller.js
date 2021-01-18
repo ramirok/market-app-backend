@@ -1,7 +1,7 @@
 const Product = require("../models/product");
 const expressValidator = require("express-validator");
 
-const getProducts = async (req, res) => {
+const getProducts = async (req, res, next) => {
   res.header({ "Cache-Control": "no-cache" });
   try {
     // if req has sortBy query
@@ -12,24 +12,15 @@ const getProducts = async (req, res) => {
       return res.json(response);
     }
 
-    // if req has no query
+    // if req has no sortBy query
     const response = await Product.find({}).limit(30);
     res.json(response);
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Failed, please try again." });
+    next(error);
   }
 };
 
-const getProductsSuggestions = async (req, res) => {
-  const errors = expressValidator
-    .validationResult(req)
-    .formatWith(({ msg }) => {
-      return msg;
-    });
-  // if validator middleware has error, return empty array
-  if (!errors.isEmpty()) return res.json([]);
-
+const getProductsSuggestions = async (req, res, next) => {
   // creates a regex with the q query
   const q = req.query.q;
   const reg = new RegExp(q, "i");
@@ -40,22 +31,11 @@ const getProductsSuggestions = async (req, res) => {
 
     res.json(productFound);
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Failed, please try again." });
+    next(error);
   }
 };
 
-const getProductsCategory = async (req, res) => {
-  const errors = expressValidator
-    .validationResult(req)
-    .formatWith(({ msg }) => {
-      return msg;
-    });
-  // if validator middleware has error, return empty array
-  if (!errors.isEmpty()) {
-    return res.json([]);
-  }
-
+const getProductsCategory = async (req, res, next) => {
   // get category from url param
   const category = req.params.category;
 
@@ -64,7 +44,7 @@ const getProductsCategory = async (req, res) => {
     const response = await Product.find({ category });
     res.json(response);
   } catch (error) {
-    res.status(400).send({ error: error.message });
+    next(error);
   }
 };
 

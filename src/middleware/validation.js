@@ -1,21 +1,19 @@
-const { body, query, param } = require("express-validator");
+const { body, query, param, validationResult } = require("express-validator");
 const Cart = require("../models/cart");
 const Product = require("../models/product");
 const mongoose = require("mongoose");
+const { badRequestError } = require("../utils/errors");
 
 const checkEmail = () => {
   // check if email is a valid email address
-  return body("email")
-    .isEmail()
-    .withMessage("Must provide a valid email address.")
-    .normalizeEmail();
+  return body("email", "Must provide a valid email address.").isEmail();
 };
 
 const checkName = () => {
   // check name has a leats 4 characters
-  return body("name")
-    .isLength({ min: 4 })
-    .withMessage("Name must be 4 charactes minimun.");
+  return body("name", "Name must be 4 charactes minimun.").isLength({
+    min: 4,
+  });
 };
 
 const checkPassword = () => {
@@ -30,81 +28,37 @@ const checkPassword = () => {
 
 const checkPasswordConfirmation = () => {
   // check if confirmation password matches password
-  return body("passwordConfirmation").custom((value, { req }) => {
+  return body(
+    "passwordConfirmation",
+    "Password confirmation does not match new password."
+  ).custom((value, { req }) => {
     if (value !== req.body.password) {
-      throw new Error("Password confirmation does not match new password.");
+      return false;
     }
     return true;
   });
 };
 
-const checkItemQuantity = async (req, res, next) => {
-  let quantity = req.body.quantity;
-  const id = req.params.id;
-
-  try {
-    // check if quantity is an integer, else throw error
-    if (isNaN(parseInt(quantity))) {
-      throw new Error();
-    }
-
-    // finds cart by owner
-    const cart = await Cart.findOne({ owner: req.user.id });
-
-    if (!cart) {
-      // if no cart is found, quantiy must be > 0
-      req.body.quantity = quantity < 1 ? 1 : quantity;
-      return next();
-    }
-
-    // finds product in cart
-    const foundIndex = cart.products.findIndex((el) => el.data.equals(id));
-
-    foundIndex > -1
-      ? // if the product is found in the cart, check that incrementing quantity doens't become < 1 (quantity in request can be negative)
-        (req.body.quantity =
-          cart.products[foundIndex].quantity + parseInt(quantity) < 1
-            ? 0
-            : quantity)
-      : // if the product is not found in the cart, quantity must be > 0
-        (req.body.quantity = quantity < 1 ? 1 : quantity);
-
-    next();
-  } catch (error) {
-    res.status(400).json({ message: "Failed, please try again." });
-  }
+const checkItemQuantity = () => {
+  return body("quantity", "Failed, please try again.").isInt();
 };
 
-const checkItemId = async (req, res, next) => {
-  const id = req.params.id;
-
-  try {
-    // check if id is a valid mongooseId, else throw error
-    const isValid = mongoose.Types.ObjectId.isValid(id);
-    if (!isValid) {
-      throw new Error();
-    }
-
-    // check if id is a valid product, else throw error
-    const productExist = await Product.findById(id);
-    if (!productExist) {
-      throw new Error();
-    }
-
-    next();
-  } catch (error) {
-    res.status(400).json({ message: "Failed, please try again." });
-  }
+const checkItemId = () => {
+  return param("id", "Failed, please try again.")
+    .isMongoId()
+    .custom((value) => {
+      return Product.findById(value).then((product) => {
+        if (!product) {
+          return Promise.reject("Failed, please try again.");
+        }
+      });
+    });
 };
 
-const checkSortQuery = (req, res, next) => {
-  // if request has query, only accepts sortBy, else return empty object
-  if (Object.entries(req.query).length > 0) {
-    if (!req.query.hasOwnProperty("sortBy")) {
-      return res.json({});
-    }
-  }
-  next();
+const checkSortQuery = () => {
+  return query("sortBy", "Failed, please try again.")
+    .optional()
+    .isIn(["sold", "createdAt"]);
 };
 
 const checkSearchQuery = () => {
@@ -114,14 +68,21 @@ const checkSearchQuery = () => {
 
 const checkCategory = () => {
   // check category param has only letters
-  return param("category").matches(/[a-z\-]+/);
+  return param("category").isIn([
+    "vegetables",
+    "snacks",
+    "fruits",
+    "spices",
+    "canned-products",
+  ]);
 };
 
-checkPersonalInfo = () => {
+const checkPersonalInfo = () => {
   return [
     body("fullName")
       .if(body("fullName").exists({ checkFalsy: true, checkNull: true }))
-      .escape(),
+      .escape()
+      .isAlpha(),
     body("phoneNumber")
       .if(body("phoneNumber").exists({ checkFalsy: true }))
       .escape()
@@ -146,6 +107,14 @@ checkPersonalInfo = () => {
   ];
 };
 
+const checkJWT = () => {
+  return body("token", "Invalid token").isJWT();
+};
+
+const checkResetLink = () => {
+  return body("resetLink").isJWT();
+};
+
 const validate = (method) => {
   switch (method) {
     case "createUser":
@@ -155,15 +124,15 @@ const validate = (method) => {
     case "forgotPass":
       return [checkEmail()];
     case "resetPass":
-      return [checkPassword(), checkPasswordConfirmation()];
+      return [checkPassword(), checkPasswordConfirmation(), checkResetLink()];
     case "changePass":
       return [checkPassword(), checkPasswordConfirmation()];
     case "addCartItem":
-      return [checkItemId, checkItemQuantity];
+      return [checkItemId(), checkItemQuantity()];
     case "delCartItem":
-      return checkItemId;
+      return checkItemId();
     case "sortProducts":
-      return checkSortQuery;
+      return checkSortQuery();
     case "suggestProducts":
       return [checkSearchQuery()];
     case "categorySearch":
@@ -171,10 +140,20 @@ const validate = (method) => {
     case "userData":
       return [checkPersonalInfo()];
     case "postHistory":
-      return checkItemId;
+      return checkItemId();
+    case "checkToken":
+      return checkJWT();
     default:
       break;
   }
 };
 
-module.exports = validate;
+const checkValidationErrors = (req, res, next) => {
+  const errors = validationResult(req);
+  if (errors.isEmpty()) {
+    return next();
+  }
+  throw new badRequestError(errors.array()[0].msg);
+};
+
+module.exports = { validate, checkValidationErrors };

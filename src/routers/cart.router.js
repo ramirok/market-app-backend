@@ -1,6 +1,6 @@
 const router = require("express").Router();
 const auth = require("../middleware/auth");
-const validate = require("../middleware/validation");
+const { validate, checkValidationErrors } = require("../middleware/validation");
 
 const {
   getAllCartItems,
@@ -8,13 +8,26 @@ const {
   deleteCartItem,
 } = require("../controllers/cart.controller");
 
-// get cart
-router.get("/", auth, getAllCartItems);
+router
+  // get cart
+  .get("/", auth, getAllCartItems)
 
-// add product to the cart
-router.post("/:id", auth, validate("addCartItem"), addCartItem);
+  // add product to the cart
+  .post(
+    "/:id",
+    auth,
+    validate("addCartItem"),
+    checkValidationErrors,
+    addCartItem
+  )
 
-// remove product from the cart
-router.delete("/:id", auth, validate("delCartItem"), deleteCartItem);
+  // remove product from the cart
+  .delete(
+    "/:id",
+    auth,
+    validate("delCartItem"),
+    checkValidationErrors,
+    deleteCartItem
+  );
 
 module.exports = router;

@@ -19,24 +19,14 @@ const {
 const expressValidator = require("express-validator");
 const mongoose = require("mongoose");
 const paypal = require("../utils/paypal");
+const { badRequestError, generalError } = require("../utils/errors");
 
-const createUser = async (req, res) => {
-  const errors = expressValidator
-    .validationResult(req)
-    .formatWith(({ msg }) => {
-      return msg;
-    });
-
-  // if validator middleware has error, returns error message
-  if (!errors.isEmpty())
-    return res.status(422).json({ message: errors.array()[0] });
-
+const createUser = async (req, res, next) => {
   const { name, email, password } = req.body;
   try {
     // checks if email already exist
     const exist = await User.findOne({ email });
-    if (exist)
-      return res.status(400).json({ message: "Email already in use." });
+    if (exist) throw new generalError("Email already in use.");
 
     // signs token with credentials
     const token = jwt.sign(
@@ -52,50 +42,31 @@ const createUser = async (req, res) => {
       message: "We have sent you an email with the activation code.",
     });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Failed, please try again." });
+    next(error);
   }
 };
 
-const activateUser = async (req, res) => {
+const activateUser = async (req, res, next) => {
   const { token } = req.body;
   try {
-    if (token) {
-      try {
-        // decodes token and creates new user with decoded credentials
-        const decoded = jwt.verify(token, config.VERIFY_ACC_SECRET);
-        const { name, email, password } = decoded;
-        const user = new User({ name, email, password });
-        await user.save();
+    // decodes token and creates new user with decoded credentials
+    const decoded = jwt.verify(token, config.VERIFY_ACC_SECRET);
+    const { name, email, password } = decoded;
+    const user = new User({ name, email, password });
+    await user.save();
 
-        // sends email with welcome message
-        sendWelcomeEmail(email, name);
-      } catch (error) {
-        // if toke verify fails, sends error message
-        return res.status(400).json({ message: "Link has expired" });
-      }
-
-      res.json({ message: "Signed up seccesfully" });
-    } else {
-      // if no token is sent in the request, send error message
-      return res.status(400).json({ message: "Link has expired" });
-    }
+    // sends email with welcome message
+    sendWelcomeEmail(email, name);
+    res.json({ message: "Signed up seccesfully" });
   } catch (error) {
-    res.status(500).json({ message: "Failed, please try again." });
+    if (error.message === "invalid signature") {
+      return next(new generalError("Link has expired."));
+    }
+    next(error);
   }
 };
 
-const loginUser = async (req, res) => {
-  const errors = expressValidator
-    .validationResult(req)
-    .formatWith(({ msg }) => {
-      return msg;
-    });
-
-  // if validator middleware has error, returns error message
-  if (!errors.isEmpty())
-    return res.status(422).json({ message: errors.array()[0] });
-
+const loginUser = async (req, res, next) => {
   try {
     // find user by credentials
     const user = await User.findByCredentials(
@@ -105,7 +76,7 @@ const loginUser = async (req, res) => {
 
     // if no user, returns error message
     if (!user) {
-      return res.status(400).json({ message: "Wrong email or password." });
+      throw new generalError("Wrong email or password.");
     }
 
     // if user found, generates token and returns user and token
@@ -113,13 +84,11 @@ const loginUser = async (req, res) => {
 
     res.json({ token });
   } catch (error) {
-    console.log(error);
-
-    res.status(500).json({ message: "Failed, please try again." });
+    next(error);
   }
 };
 
-const loginUserGoogle = async (req, res) => {
+const loginUserGoogle = async (req, res, next) => {
   if (req.query.code) {
     try {
       // gets acces token from code query in redirect url
@@ -151,8 +120,7 @@ const loginUserGoogle = async (req, res) => {
       const token = await exist.generateAuthToken();
       return res.json({ user: exist, token });
     } catch (error) {
-      // console.log(error);
-      res.status(500).json({ message: "Failed, please try again." });
+      next(error);
     }
   } else {
     try {
@@ -160,29 +128,17 @@ const loginUserGoogle = async (req, res) => {
       const googleLoginUrl = `https://accounts.google.com/o/oauth2/v2/auth?${google.stringifiedParams}`;
       res.json({ url: googleLoginUrl });
     } catch (error) {
-      console.log(error);
-      res.status(500).json({ message: "Failed, please try again." });
+      next(error);
     }
   }
 };
 
-const forgotPass = async (req, res) => {
-  const errors = expressValidator
-    .validationResult(req)
-    .formatWith(({ msg }) => {
-      return msg;
-    });
-
-  // if validator middleware has error, returns error message
-  if (!errors.isEmpty())
-    return res.status(422).json({ message: errors.array()[0] });
-
+const forgotPass = async (req, res, next) => {
   const { email } = req.body;
 
   try {
     // find user by email
     const user = await User.findOne({ email });
-
     // if no user is found, return message anyways
     if (!user) {
       return res.json({
@@ -201,90 +157,62 @@ const forgotPass = async (req, res) => {
 
     res.json({ message: "Email has been sent, follow the instrucions" });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Failed, please try again." });
+    next(error);
   }
 };
 
-const resetPass = async (req, res) => {
-  const errors = expressValidator
-    .validationResult(req)
-    .formatWith(({ msg }) => {
-      return msg;
-    });
-
-  // if validator middleware has error, returns error message
-  if (!errors.isEmpty())
-    return res.status(422).json({ message: errors.array()[0] });
-
+const resetPass = async (req, res, next) => {
   const { resetLink, passwordConfirmation } = req.body;
 
   try {
-    if (resetLink) {
-      try {
-        // verifies resetLink and send error message if failed
-        jwt.verify(resetLink, config.RESET_PASS_SECRET);
-      } catch (error) {
-        return res.status(400).json({ message: "Link has expired." });
-      }
-
-      // find user by resetLink
-      const user = await User.findOne({ resetLink });
-      if (!user) {
-        // if no user is found, sends error message
-        return res.status(400).json({ message: "Link has expired." });
-      }
-
-      // if user is found, updates password and resetLink, and saves updated user
-      user.password = passwordConfirmation;
-      user.resetLink = "";
-      await user.save();
-
-      res.json({ message: "Your password has been changed." });
-    } else {
-      // if no resetLink is sent in the request, sends error message
-      return res.status(400).json({ message: "Link has expired." });
+    try {
+      // verifies resetLink and send error message if failed
+      jwt.verify(resetLink, config.RESET_PASS_SECRET);
+    } catch (error) {
+      return next(new generalError("Link has expired."));
     }
+
+    // find user by resetLink
+    const user = await User.findOne({ resetLink });
+    if (!user) {
+      // if no user is found, sends error message
+      return next(new generalError("Link has expired."));
+    }
+
+    // if user is found, updates password and resetLink, and saves updated user
+    user.password = passwordConfirmation;
+    user.resetLink = "";
+    await user.save();
+
+    res.json({ message: "Your password has been changed." });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Failed, please try again." });
+    next(error);
   }
 };
 
-const logoutUser = async (req, res) => {
+const logoutUser = async (req, res, next) => {
   try {
     // removes the token sent in the request from the token list and saves the updated user
     req.user.tokens = req.user.tokens.filter((el) => el.token !== req.token);
     await req.user.save();
     res.json({});
   } catch (error) {
-    res.status(500).json({ message: "Failed, please try again." });
+    next(error);
   }
 };
 
-const logoutUserFromAll = async (req, res) => {
+const logoutUserFromAll = async (req, res, next) => {
   try {
     // removes all tokens exept the one sent in the request and saves the updated user
     req.user.tokens = req.user.tokens.filter((el) => el.token === req.token);
     await req.user.save();
     res.json({ message: "Closed all sessions on others devices." });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Failed, please try again." });
+    next(error);
   }
 };
 
-const changePass = async (req, res) => {
-  const errors = expressValidator
-    .validationResult(req)
-    .formatWith(({ msg }) => {
-      return msg;
-    });
-
-  // if validator middleware has error, returns error message
-  if (!errors.isEmpty())
-    return res.status(422).json({ message: errors.array()[0] });
-
+const changePass = async (req, res, next) => {
   const { currentPass, passwordConfirmation } = req.body;
 
   try {
@@ -292,7 +220,7 @@ const changePass = async (req, res) => {
     const isMatch = await bcrypt.compare(currentPass, req.user.password);
     if (!isMatch) {
       // if doesn't match, sends error message
-      return res.status(400).json({ message: "Wrong password." });
+      throw new badRequestError("Wrong password.");
     }
     // updates user with new pasword
     req.user.password = passwordConfirmation;
@@ -301,16 +229,14 @@ const changePass = async (req, res) => {
     sendPasswordChangedEmail(req.user.email, req.user.name);
     res.json({ message: "Password changed successfully" });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Failed, please try again." });
+    next(error);
   }
 };
 
-const getUserInfo = async (req, res) => {
+const getUserInfo = async (req, res, next) => {
   try {
     // finds user details by id
     let details = await UserDetails.findOne({ owner: req.user._id });
-
     //if user details have been never created, sends an empty object
     if (!details) {
       return res.json({});
@@ -319,22 +245,11 @@ const getUserInfo = async (req, res) => {
     // if is found, send details
     res.json(details);
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Failed, please try again." });
+    next(error);
   }
 };
 
-const putUserInfo = async (req, res) => {
-  const errors = expressValidator
-    .validationResult(req)
-    .formatWith(({ msg }) => {
-      return msg;
-    });
-
-  // if validator middleware has error, returns error message
-  if (!errors.isEmpty())
-    return res.status(422).json({ message: errors.array()[0] });
-
+const putUserInfo = async (req, res, next) => {
   try {
     const reqData = req.body;
 
@@ -356,12 +271,11 @@ const putUserInfo = async (req, res) => {
     // always returns empty object
     res.json({});
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Failed, please try again." });
+    next(error);
   }
 };
 
-const createPurchaseOrder = async (req, res) => {
+const createPurchaseOrder = async (req, res, next) => {
   try {
     const accessToken = await paypal.getAccessToken();
 
@@ -436,12 +350,11 @@ const createPurchaseOrder = async (req, res) => {
     // return order id
     res.json({ orderID: parsedOrder.id });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Failed, please try again." });
+    next(error);
   }
 };
 
-const resetCart = async (req, res) => {
+const resetCart = async (req, res, next) => {
   const { orderId } = req.body;
 
   try {
@@ -505,43 +418,28 @@ const resetCart = async (req, res) => {
     // return empty cart
     res.status(200).json([]);
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Failed, please try again." });
+    next(error);
   }
 };
 
-const orders = async (req, res) => {
+const orders = async (req, res, next) => {
   try {
     // finds user's orders
     const orders = await Payment.find({ owner: req.user._id }).populate(
       "products.data"
     );
-
     res.json(orders);
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Failed, please try again." });
+    next(error);
   }
 };
 
-const postHistory = async (req, res) => {
-  const errors = expressValidator
-    .validationResult(req)
-    .formatWith(({ msg }) => {
-      return msg;
-    });
-
-  // if validator middleware has error, returns error message
-  if (!errors.isEmpty())
-    return res.status(422).json({ message: errors.array()[0] });
-
-  // const { newId } = req.body; //item to add to history
+const postHistory = async (req, res, next) => {
   const { id } = req.params; //item to add to history
 
   try {
     // finds user's history
     let history = await UserHistory.findOne({ owner: req.user._id });
-
     // if not found, creates new hsitory and returns
     if (!history) {
       const history = new UserHistory({
@@ -562,12 +460,11 @@ const postHistory = async (req, res) => {
 
     res.json({});
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Failed, please try again." });
+    next(error);
   }
 };
 
-const getHistory = async (req, res) => {
+const getHistory = async (req, res, next) => {
   try {
     // finds user's history
     const history = await UserHistory.findOne({ owner: req.user._id }).populate(
@@ -579,8 +476,7 @@ const getHistory = async (req, res) => {
     }
     res.json(history.products);
   } catch (error) {
-    console.log(error);
-    res.status(500).end();
+    next(error);
   }
 };
 

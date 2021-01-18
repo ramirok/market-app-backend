@@ -1,5 +1,5 @@
 const router = require("express").Router();
-const validate = require("../middleware/validation");
+const { validate, checkValidationErrors } = require("../middleware/validation");
 
 const {
   getProducts,
@@ -7,13 +7,24 @@ const {
   getProductsCategory,
 } = require("../controllers/products.controller");
 
-// get products data
-router.get("/", validate("sortProducts"), getProducts);
+router
+  // get products data
+  .get("/", validate("sortProducts"), checkValidationErrors, getProducts)
 
-// get searchBar suggestions
-router.get("/autosuggest", validate("suggestProducts"), getProductsSuggestions);
+  // get searchBar suggestions
+  .get(
+    "/autosuggest",
+    validate("suggestProducts"),
+    checkValidationErrors,
+    getProductsSuggestions
+  )
 
-// get products by category
-router.get("/cat/:category", validate("categorySearch"), getProductsCategory);
+  // get products by category
+  .get(
+    "/cat/:category",
+    validate("categorySearch"),
+    checkValidationErrors,
+    getProductsCategory
+  );
 
 module.exports = router;

@@ -1,4 +1,5 @@
 const Cart = require("../models/cart");
+const expressValidator = require("express-validator");
 
 const getAllCartItems = async (req, res) => {
   try {
@@ -16,39 +17,38 @@ const getAllCartItems = async (req, res) => {
   }
 };
 
-const addCartItem = async (req, res) => {
-  // let { quantity, id } = req.body;
+const addCartItem = async (req, res, next) => {
   const quantity = req.body.quantity;
   const id = req.params.id;
 
   try {
-    let cart =
-      // if the product is in cart, imcrement by quantity
-      (await Cart.findOneAndUpdate(
-        { owner: req.user.id, "products.data": id },
-        { $inc: { "products.$.quantity": quantity } },
-        { new: true }
-      )) ||
-      // if the product is not in cart, push
-      (await Cart.findOneAndUpdate(
-        { owner: req.user.id },
-        {
-          $push: { products: { data: id, quantity } },
-        },
-        { new: true }
-      ));
+    let cart = await Cart.findOne({ owner: req.user.id });
 
-    // if no cart is found, creates it with the new product
     if (!cart) {
+      if (quantity < 1) {
+        return res.json({ products: [] });
+      }
       cart = new Cart({
         products: [{ data: id, quantity }],
         owner: req.user.id,
       });
-
-      await cart.save();
+    } else {
+      // finds product in cart
+      const foundIndex = cart.products.findIndex((el) => el.data.equals(id));
+      if (foundIndex > -1) {
+        const currentAmount = cart.products[foundIndex].quantity;
+        cart.products[foundIndex].quantity =
+          currentAmount + parseInt(quantity) < 1
+            ? currentAmount
+            : currentAmount + parseInt(quantity);
+      } else {
+        if (quantity > 0) {
+          cart.products.push({ data: id, quantity });
+        }
+      }
     }
 
-    // populates cart with product data and returns it
+    await cart.save();
     await Cart.populate(cart, {
       path: "products.data",
       select: ["name", "img", "description", "price"],
@@ -56,12 +56,11 @@ const addCartItem = async (req, res) => {
 
     return res.json(cart);
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Failed, please try again." });
+    next(error);
   }
 };
 
-const deleteCartItem = async (req, res) => {
+const deleteCartItem = async (req, res, next) => {
   const id = req.params.id;
   try {
     // if cart is found, removes the product by id
@@ -85,8 +84,7 @@ const deleteCartItem = async (req, res) => {
     });
     res.json(cart);
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Failed, please try again." });
+    next(error);
   }
 };
 

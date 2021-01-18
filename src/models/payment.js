@@ -3,11 +3,11 @@ const mongoose = require("mongoose");
 const paymentSchema = new mongoose.Schema(
   {
     owner: { type: mongoose.Types.ObjectId },
-    data: Object,
+    data: { type: Object, required: true },
     products: [
       {
-        data: { type: mongoose.Types.ObjectId, ref: "Product" },
-        quantity: Number,
+        data: { type: mongoose.Types.ObjectId, ref: "Product", required: true },
+        quantity: { type: Number, required: true },
       },
     ],
   },
