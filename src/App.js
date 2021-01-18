@@ -32,18 +32,6 @@ app.use("/products", productsRouters);
 app.use("/users", usersRouters);
 app.use("/cart", cartRouters);
 
-// app.use((error, req, res, next) => {
-//   // express-validator errors
-//   if (error.isEmpty) {
-//     res.status(400).json({ message: error.array()[0].msg });
-//   }
-//   if (error.code === "custom") {
-//     res.status(500).json({ message: error.msg });
-//   }
-//   res
-//     .status(500)
-//     .json({ message: "Failed, please try again. From Middleware" });
-// });
 app.use((error, req, res, next) => {
   if (error instanceof generalError) {
     return res.status(error.getCode()).json({ message: error.message });
