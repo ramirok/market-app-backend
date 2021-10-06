@@ -1,17 +1,17 @@
 {
   "files": {
-    "main.css": "/static/css/main.c060ac2c.chunk.css",
-    "main.js": "/static/js/main.a13cc615.chunk.js",
-    "main.js.map": "/static/js/main.a13cc615.chunk.js.map",
+    "main.css": "/static/css/main.8a039be7.chunk.css",
+    "main.js": "/static/js/main.f5192fee.chunk.js",
+    "main.js.map": "/static/js/main.f5192fee.chunk.js.map",
     "runtime-main.js": "/static/js/runtime-main.bb340dc9.js",
     "runtime-main.js.map": "/static/js/runtime-main.bb340dc9.js.map",
-    "static/js/2.bed0bb01.chunk.js": "/static/js/2.bed0bb01.chunk.js",
-    "static/js/2.bed0bb01.chunk.js.map": "/static/js/2.bed0bb01.chunk.js.map",
+    "static/js/2.78b3508b.chunk.js": "/static/js/2.78b3508b.chunk.js",
+    "static/js/2.78b3508b.chunk.js.map": "/static/js/2.78b3508b.chunk.js.map",
     "index.html": "/index.html",
-    "precache-manifest.519a399df1207cb5c8992aba9acdbcdc.js": "/precache-manifest.519a399df1207cb5c8992aba9acdbcdc.js",
+    "precache-manifest.8ed18b922cfba84436b1cc0495865c17.js": "/precache-manifest.8ed18b922cfba84436b1cc0495865c17.js",
     "service-worker.js": "/service-worker.js",
-    "static/css/main.c060ac2c.chunk.css.map": "/static/css/main.c060ac2c.chunk.css.map",
-    "static/js/2.bed0bb01.chunk.js.LICENSE.txt": "/static/js/2.bed0bb01.chunk.js.LICENSE.txt",
+    "static/css/main.8a039be7.chunk.css.map": "/static/css/main.8a039be7.chunk.css.map",
+    "static/js/2.78b3508b.chunk.js.LICENSE.txt": "/static/js/2.78b3508b.chunk.js.LICENSE.txt",
     "static/media/bell.0f3dedb4.svg": "/static/media/bell.0f3dedb4.svg",
     "static/media/canned.b2f89f1d.svg": "/static/media/canned.b2f89f1d.svg",
     "static/media/closed.bfa21679.svg": "/static/media/closed.bfa21679.svg",
@@ -36,8 +36,8 @@
   },
   "entrypoints": [
     "static/js/runtime-main.bb340dc9.js",
-    "static/js/2.bed0bb01.chunk.js",
-    "static/css/main.c060ac2c.chunk.css",
-    "static/js/main.a13cc615.chunk.js"
+    "static/js/2.78b3508b.chunk.js",
+    "static/css/main.8a039be7.chunk.css",
+    "static/js/main.f5192fee.chunk.js"
   ]
 }
