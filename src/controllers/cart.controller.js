@@ -1,5 +1,6 @@
 const Cart = require("../models/cart");
 const expressValidator = require("express-validator");
+const limiter = require("../middleware/rateLimiter");
 
 const getAllCartItems = async (req, res) => {
   try {
@@ -18,10 +19,10 @@ const getAllCartItems = async (req, res) => {
 };
 
 const addCartItem = async (req, res, next) => {
-  const quantity = req.body.quantity;
-  const id = req.params.id;
-
   try {
+    const quantity = req.body.quantity;
+    const id = req.params.id;
+
     let cart = await Cart.findOne({ owner: req.user.id });
 
     if (!cart) {
@@ -53,7 +54,6 @@ const addCartItem = async (req, res, next) => {
       path: "products.data",
       select: ["name", "img", "description", "price"],
     });
-
     return res.json(cart);
   } catch (error) {
     next(error);

@@ -4,7 +4,7 @@ const userDetailsSchema = new mongoose.Schema({
   infoCompleted: { type: Boolean, default: false },
   addressCompleted: { type: Boolean, default: false },
   fullName: String,
-  phoneNumber: Number,
+  phoneNumber: String,
   state: String,
   city: String,
   zipCode: Number,

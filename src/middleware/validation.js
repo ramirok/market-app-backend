@@ -11,9 +11,12 @@ const checkEmail = () => {
 
 const checkName = () => {
   // check name has a leats 4 characters
-  return body("name", "Name must be 4 charactes minimun.").isLength({
-    min: 4,
-  });
+  return body("name", "Name must be 4 charactes minimun.")
+    .isLength({
+      min: 4,
+    })
+    .isAlphanumeric()
+    .withMessage("UserName allows only alphanumeric charactes");
 };
 
 const checkPassword = () => {
@@ -23,7 +26,7 @@ const checkPassword = () => {
     "Password must have 6 characters, 1 digit and 1 letter."
   )
     .isLength({ min: 6 })
-    .matches(/^(?=.*[a-zA-Z])(?=.*[0-9])/);
+    .matches(/^(?=.*[A-Za-z])(?=.*\d)([\s\S]{6,})$/);
 };
 
 const checkPasswordConfirmation = () => {
@@ -81,28 +84,26 @@ const checkPersonalInfo = () => {
   return [
     body("fullName")
       .if(body("fullName").exists({ checkFalsy: true, checkNull: true }))
-      .escape()
-      .isAlpha(),
+      .isLength({ min: 4 })
+      .matches(/^[a-z ,.'-]*$/i),
     body("phoneNumber")
       .if(body("phoneNumber").exists({ checkFalsy: true }))
-      .escape()
-      .isNumeric(),
+      .matches(/^[0-9\s+\-().]*$/),
     body("state")
       .if(body("state").exists({ checkFalsy: true }))
-      .escape(),
+      .isLength({ min: 4 }),
     body("city")
       .if(body("city").exists({ checkFalsy: true }))
-      .escape(),
+      .isLength({ min: 4 }),
     body("zipCode")
       .if(body("zipCode").exists({ checkFalsy: true }))
-      .escape()
-      .isNumeric(),
+      .isNumeric()
+      .isLength({ min: 4 }),
     body("street")
       .if(body("street").exists({ checkFalsy: true }))
-      .escape(),
+      .isLength({ min: 4 }),
     body("streetNumber")
       .if(body("streetNumber").exists({ checkFalsy: true }))
-      .escape()
       .isNumeric(),
   ];
 };

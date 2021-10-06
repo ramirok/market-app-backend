@@ -33,6 +33,7 @@ app.use("/users", usersRouters);
 app.use("/cart", cartRouters);
 
 app.use((error, req, res, next) => {
+  console.log(error);
   if (error instanceof generalError) {
     return res.status(error.getCode()).json({ message: error.message });
   }

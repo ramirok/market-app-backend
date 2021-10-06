@@ -8,6 +8,10 @@ const {
   deleteCartItem,
 } = require("../controllers/cart.controller");
 
+const RequestQ = require("express-request-queue");
+const qAdd = new RequestQ({ unique: true, from: "user", name: "_id" });
+const qDel = new RequestQ({ unique: true, from: "user", name: "_id" });
+
 router
   // get cart
   .get("/", auth, getAllCartItems)
@@ -18,7 +22,7 @@ router
     auth,
     validate("addCartItem"),
     checkValidationErrors,
-    addCartItem
+    qAdd.run(addCartItem)
   )
 
   // remove product from the cart
@@ -27,7 +31,7 @@ router
     auth,
     validate("delCartItem"),
     checkValidationErrors,
-    deleteCartItem
+    qDel.run(deleteCartItem)
   );
 
 module.exports = router;
