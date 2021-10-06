@@ -1,6 +1,5 @@
 const Cart = require("../models/cart");
 const expressValidator = require("express-validator");
-const limiter = require("../middleware/rateLimiter");
 
 const getAllCartItems = async (req, res) => {
   try {
